@@ -4,13 +4,25 @@ import { useState, useEffect } from "react";
 const TECH_COMPANIES = ["OpenAI","Anthropic","Google DeepMind","Microsoft AI","Meta AI","Apple","Nvidia","Perplexity","Mistral","xAI","Cursor","Cohere","Scale AI","Ramp","Databricks"];
 const FOOD_COMPANIES = ["Shake Shack","Sweetgreen","Chipotle","Toast","Yelp","OpenTable","Resy","Eater","Momofuku","Eleven Madison Park"];
 
-const STORAGE_KEY_TECH = "brief_tech_v2";
-const STORAGE_KEY_FOOD = "brief_food_v2";
-const STORAGE_KEY_TS = "brief_ts_v2";
+const STORAGE_KEY_TECH = "brief_tech_v3";
+const STORAGE_KEY_FOOD = "brief_food_v3";
+const STORAGE_KEY_TS = "brief_ts_v3";
+
+const C = {
+  beige: "#F5F0E8",
+  white: "#FFFFFF",
+  lavenderLight: "#EDE8F5",
+  lavender: "#C4B5D4",
+  purpleMid: "#9B8AB0",
+  eggplant: "#4A3060",
+  bodyText: "#2D2438",
+  muted: "#8A7AA0",
+  border: "#D8D0E8",
+};
 
 export default function Home() {
-  const [techStories, setTechStories] = useState([]);
-  const [foodStories, setFoodStories] = useState([]);
+  const [techData, setTechData] = useState(null);
+  const [foodData, setFoodData] = useState(null);
   const [techLoading, setTechLoading] = useState(false);
   const [foodLoading, setFoodLoading] = useState(false);
   const [techError, setTechError] = useState(null);
@@ -23,8 +35,8 @@ export default function Home() {
       const tech = localStorage.getItem(STORAGE_KEY_TECH);
       const food = localStorage.getItem(STORAGE_KEY_FOOD);
       const ts = localStorage.getItem(STORAGE_KEY_TS);
-      if (tech) setTechStories(JSON.parse(tech));
-      if (food) setFoodStories(JSON.parse(food));
+      if (tech) setTechData(JSON.parse(tech));
+      if (food) setFoodData(JSON.parse(food));
       if (ts) setLastUpdated(ts);
     } catch(e) {}
   }, []);
@@ -37,7 +49,7 @@ export default function Home() {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Failed to fetch");
-    return data.stories;
+    return data;
   }
 
   async function runBriefing() {
@@ -54,14 +66,14 @@ export default function Home() {
     ]);
 
     if (techResult.status === "fulfilled") {
-      setTechStories(techResult.value);
+      setTechData(techResult.value);
       localStorage.setItem(STORAGE_KEY_TECH, JSON.stringify(techResult.value));
     } else {
       setTechError(techResult.reason?.message || "Failed to load");
     }
 
     if (foodResult.status === "fulfilled") {
-      setFoodStories(foodResult.value);
+      setFoodData(foodResult.value);
       localStorage.setItem(STORAGE_KEY_FOOD, JSON.stringify(foodResult.value));
     } else {
       setFoodError(foodResult.reason?.message || "Failed to load");
@@ -76,39 +88,33 @@ export default function Home() {
   }
 
   return (
-    <main style={{ background: "#0a0f1e", minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: "#f0f4fa" }}>
+    <main style={{ background: C.beige, minHeight: "100vh", fontFamily: "'Inter', sans-serif", color: C.bodyText }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0a0f1e; }
-        .story-card { background: #1a2236; border: 1px solid rgba(140,160,200,0.12); border-radius: 6px; padding: 14px 16px; margin-bottom: 10px; transition: border-color 0.2s; }
-        .story-card:hover { border-color: rgba(140,160,200,0.25); }
-        .story-card.flagged { border-left: 2px solid #e8a020; }
-        .story-card.flagged.food-flag { border-left-color: #2ecc8a; }
-        .refresh-btn { background: transparent; border: 1px solid rgba(232,160,32,0.3); color: #e8a020; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; padding: 7px 16px; cursor: pointer; border-radius: 3px; transition: all 0.2s; }
-        .refresh-btn:hover:not(:disabled) { background: rgba(232,160,32,0.08); border-color: #e8a020; }
-        .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .signal-badge { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; }
-        .badge-fundraising { background: rgba(232,160,32,0.12); color: #e8a020; border: 1px solid rgba(232,160,32,0.2); }
-        .badge-hiring { background: rgba(74,158,255,0.1); color: #4a9eff; border: 1px solid rgba(74,158,255,0.2); }
-        .badge-product { background: rgba(46,204,138,0.1); color: #2ecc8a; border: 1px solid rgba(46,204,138,0.2); }
-        .badge-expansion { background: rgba(160,106,16,0.2); color: #f0c060; border: 1px solid rgba(232,160,32,0.3); }
+        body { background: #F5F0E8; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes loadpulse { 0% { width: 0%; margin-left: 0; } 50% { width: 60%; } 100% { width: 0%; margin-left: 100%; } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .loading-fill { animation: loadpulse 1.5s ease-in-out infinite; }
         .loading-text { animation: blink 1.2s ease-in-out infinite; }
+        .headline-card { background: #FFFFFF; border: 1px solid #D8D0E8; border-radius: 10px; padding: 18px 20px; margin-bottom: 10px; cursor: pointer; transition: box-shadow 0.2s, border-color 0.2s; box-shadow: 0 1px 4px rgba(74,48,96,0.06); }
+        .headline-card:hover { box-shadow: 0 4px 16px rgba(74,48,96,0.12); border-color: #C4B5D4; }
+        .pull-btn { background: #F5F0E8; border: none; color: #4A3060; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.3px; padding: 9px 20px; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+        .pull-btn:hover:not(:disabled) { background: #EDE8F5; }
+        .pull-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .deal-row { background: #FFFFFF; border: 1px solid #D8D0E8; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(74,48,96,0.05); }
       `}</style>
 
       {/* Header */}
-      <div style={{ borderBottom: "1px solid rgba(232,160,32,0.3)", padding: "18px 28px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#0a0f1e", zIndex: 100 }}>
+      <div style={{ padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: C.eggplant, zIndex: 100, boxShadow: "0 2px 16px rgba(74,48,96,0.2)" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700, color: "#e8a020" }}>The Brief</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#8a9bb5", letterSpacing: 2, textTransform: "uppercase" }}>Intelligence Tracker</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: "#F5F0E8" }}>The Brief</div>
+          <div style={{ fontSize: 11, color: C.lavender, letterSpacing: 2.5, textTransform: "uppercase", fontWeight: 400 }}>Intelligence Tracker</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {lastUpdated && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "#8a9bb5" }}>Updated {lastUpdated}</div>}
-          <button className="refresh-btn" onClick={runBriefing} disabled={isLoading}>
+          {lastUpdated && <div style={{ fontSize: 12, color: C.lavender }}>{lastUpdated}</div>}
+          <button className="pull-btn" onClick={runBriefing} disabled={isLoading}>
             <span style={{ display: "inline-block", animation: isLoading ? "spin 1s linear infinite" : "none" }}>↻</span>
             {" "}{isLoading ? "Fetching..." : "Pull Latest"}
           </button>
@@ -116,75 +122,145 @@ export default function Home() {
       </div>
 
       {/* Two pane layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: "calc(100vh - 100px)" }}>
-        <Pane title="Tech & AI" stories={techStories} loading={techLoading} error={techError} isFood={false} />
-        <Pane title="Food & Hospitality" stories={foodStories} loading={foodLoading} error={foodError} isFood={true} />
-      </div>
-
-      {/* Footer */}
-      <div style={{ borderTop: "1px solid rgba(140,160,200,0.12)", padding: "10px 28px", display: "flex", alignItems: "center", gap: 20, background: "#0a0f1e" }}>
-        {[["#e8a020","Fundraising"],["#4a9eff","Hiring"],["#2ecc8a","Product"],["#f0c060","Expansion"]].map(([color, label]) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 9, color: "#8a9bb5", letterSpacing: "0.8px", textTransform: "uppercase" }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: color }}></div>
-            {label}
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: "calc(100vh - 62px)" }}>
+        <Pane title="Tech & AI" data={techData} loading={techLoading} error={techError} isLeft />
+        <Pane title="Food & Hospitality" data={foodData} loading={foodLoading} error={foodError} />
       </div>
     </main>
   );
 }
 
-function Pane({ title, stories, loading, error, isFood }) {
-  const dotColor = isFood ? "#2ecc8a" : "#e8a020";
+function SignalBadge({ signal }) {
+  if (!signal) return null;
+  const styles = {
+    fundraising: { background: "#F0EBF8", color: "#4A3060", border: "1px solid #C4B5D4" },
+    hiring:      { background: "#EAF0FB", color: "#2C5282", border: "1px solid #90B8E8" },
+    product:     { background: "#EBF8F2", color: "#276749", border: "1px solid #90CEB0" },
+    expansion:   { background: "#FDF3E8", color: "#7B4F12", border: "1px solid #E8C090" },
+  };
   return (
-    <div style={{ padding: "24px 24px 40px", borderRight: isFood ? "none" : "1px solid rgba(140,160,200,0.12)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid rgba(140,160,200,0.12)" }}>
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor }}></div>
-          {title}
-        </div>
-        {stories.length > 0 && <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#8a9bb5" }}>{stories.length} stories</div>}
+    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase", padding: "2px 8px", borderRadius: 4, ...(styles[signal] || styles.fundraising) }}>
+      {signal}
+    </span>
+  );
+}
+
+function DealTypeBadge({ type }) {
+  const styles = {
+    fundraising: { background: "#F0EBF8", color: "#4A3060" },
+    acquisition: { background: "#FDF3E8", color: "#7B4F12" },
+    hiring:      { background: "#EAF0FB", color: "#2C5282" },
+  };
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase", padding: "2px 8px", borderRadius: 4, flexShrink: 0, ...(styles[type] || styles.fundraising) }}>
+      {type}
+    </span>
+  );
+}
+
+function Pane({ title, data, loading, error, isLeft }) {
+  const [expandedIdx, setExpandedIdx] = useState(null);
+
+  const headlines = data?.headlines || [];
+  const synthesis = data?.synthesis || "";
+  const deals = data?.deals || [];
+  const trendSpotlight = data?.trendSpotlight || null;
+  const hasData = headlines.length > 0 || synthesis || deals.length > 0 || trendSpotlight;
+
+  return (
+    <div style={{ padding: "32px 28px 56px", borderRight: isLeft ? `1px solid ${C.border}` : "none" }}>
+      {/* Pane title */}
+      <div style={{ marginBottom: 24, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 21, fontWeight: 700, color: C.eggplant }}>{title}</div>
       </div>
 
       {loading && (
         <div style={{ padding: "20px 0" }}>
-          <div style={{ height: 2, background: "#243047", borderRadius: 1, marginBottom: 10, overflow: "hidden" }}>
-            <div className="loading-fill" style={{ height: "100%", background: dotColor, borderRadius: 1 }}></div>
+          <div style={{ height: 2, background: C.lavenderLight, borderRadius: 1, marginBottom: 12, overflow: "hidden" }}>
+            <div className="loading-fill" style={{ height: "100%", background: C.purpleMid, borderRadius: 1 }}></div>
           </div>
-          <div className="loading-text" style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#8a9bb5", letterSpacing: 1, textTransform: "uppercase" }}>Scanning live sources...</div>
+          <div className="loading-text" style={{ fontSize: 11, color: C.muted, letterSpacing: 1, textTransform: "uppercase" }}>Scanning live sources...</div>
         </div>
       )}
 
       {error && !loading && (
-        <div style={{ background: "rgba(224,90,90,0.06)", border: "1px solid rgba(224,90,90,0.2)", borderRadius: 6, padding: "14px 16px", fontSize: 12, color: "#e05a5a", fontFamily: "'DM Mono', monospace" }}>
+        <div style={{ background: "#FDF0EF", border: "1px solid #E8B0B0", borderRadius: 8, padding: "14px 16px", fontSize: 13, color: "#C0392B" }}>
           ⚠ {error}
         </div>
       )}
 
-      {!loading && !error && stories.length === 0 && (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ fontSize: 28, marginBottom: 12, opacity: 0.3 }}>◈</div>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "#8a9bb5", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Awaiting Briefing</div>
-          <div style={{ fontSize: 12, color: "#8a9bb5", opacity: 0.7 }}>Hit "Pull Latest" to fetch today's intel</div>
+      {!loading && !error && !hasData && (
+        <div style={{ textAlign: "center", padding: "80px 20px" }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, color: C.lavender, marginBottom: 16 }}>◈</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, color: C.purpleMid, marginBottom: 8 }}>Awaiting Briefing</div>
+          <div style={{ fontSize: 13, color: C.muted }}>Hit "Pull Latest" to fetch today's intel</div>
         </div>
       )}
 
-      {!loading && stories.map((s, i) => {
-        const flagged = s.signal ? ` flagged${isFood ? " food-flag" : ""}` : "";
-        const badgeClass = `badge-${s.signal}`;
-        return (
-          <div key={i} className={`story-card${flagged}`}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 500, color: isFood ? "#2ecc8a" : "#e8a020", letterSpacing: "0.5px", textTransform: "uppercase" }}>{s.company}</span>
-              {s.signal && <span className={`signal-badge ${badgeClass}`}>{s.signal}</span>}
+      {!loading && hasData && (
+        <>
+          {/* Expandable headline cards */}
+          {headlines.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              {headlines.map((h, i) => (
+                <div
+                  key={i}
+                  className="headline-card"
+                  onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.purpleMid, textTransform: "uppercase", letterSpacing: 0.8 }}>{h.company}</span>
+                      <SignalBadge signal={h.signal} />
+                    </div>
+                    <span style={{ fontSize: 16, color: C.lavender, display: "inline-block", transition: "transform 0.2s", transform: expandedIdx === i ? "rotate(180deg)" : "none" }}>⌄</span>
+                  </div>
+                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 600, color: C.bodyText, lineHeight: 1.5 }}>{h.headline}</div>
+                  {expandedIdx === i && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, fontSize: 13, color: C.muted, lineHeight: 1.7, fontStyle: "italic" }}>
+                      {h.sowhat}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "#f0f4fa", lineHeight: 1.45, marginBottom: 6 }}>{s.headline}</div>
-            <div style={{ fontSize: 12, color: "#c4cfe0", lineHeight: 1.55, fontStyle: "italic" }}>
-              <span style={{ color: "#8a9bb5", fontStyle: "normal" }}>↳ </span>{s.sowhat}
+          )}
+
+          {/* This Week in [Industry] */}
+          {synthesis && (
+            <div style={{ background: C.lavenderLight, border: `1px solid ${C.lavender}`, borderRadius: 10, padding: "20px 22px", marginBottom: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.eggplant, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>This Week in {title}</div>
+              <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, color: C.bodyText, lineHeight: 1.75, fontStyle: "italic" }}>{synthesis}</p>
             </div>
-          </div>
-        );
-      })}
+          )}
+
+          {/* Deals & Moves */}
+          {deals.length > 0 && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, fontWeight: 700, color: C.eggplant, marginBottom: 14 }}>Deals & Moves</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {deals.map((d, i) => (
+                  <div key={i} className="deal-row" style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <DealTypeBadge type={d.type} />
+                    <div style={{ fontSize: 13, color: C.bodyText, lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 600 }}>{d.company}</span> — {d.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Why It Matters */}
+          {trendSpotlight && (
+            <div style={{ background: C.eggplant, borderRadius: 10, padding: "24px 26px" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.lavender, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>Why It Matters</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: "#F5F0E8", marginBottom: 14, lineHeight: 1.4 }}>{trendSpotlight.title}</div>
+              <p style={{ fontSize: 13, color: C.lavenderLight, lineHeight: 1.75 }}>{trendSpotlight.body}</p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
